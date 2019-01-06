@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<configuration>
+    <nodegroups>
+        <nodegroup name="GROUP1" type="file">
+            <!-- Node connections -->
+            <node name="Node 1" node-name="xyz001.io.tmo:1234" user="user123" password="psw123" remote-dir="/services/logs/jboss-xyz/sy-logs"/>
+            <node name="Node 2" node-name="xyz002.io.tmo:1234" user="user123" password="psw123" remote-dir="/services/logs/jboss-xyz/sy-logs"/>
+            <node name="Node 3" node-name="xyz003.io.tmo:1234" user="user123" password="psw123" remote-dir="/services/logs/jboss-xyz/sy-logs"/>
+            <sources>
+                <!-- unix commands -->
+                <source name="server.log*"><![CDATA[find . -maxdepth 1 -type f -name '{source_name}' -newermt '{search_date}' -exec grep -Hn '{search_str}' {{}} /dev/null \;]]></source>
+                <source name="message.log*"><![CDATA[find . -maxdepth 1 -type f -name '{source_name}' -newermt '{search_date}' -exec grep -Hn '{search_str}' {{}} /dev/null \;]]></source>
+            </sources>
+            <patterns>
+                <!-- Sorting regex -->
+                <sort active="1"><![CDATA[(?:.*)(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3})]]></sort>
+                <!-- Fields extracting regex -->
+                <msg-column name="DateTime"><![CDATA[(?:.*)(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3})(?:\s)]]></msg-column>
+                <msg-column name="Interface"><![CDATA[(?:.*\sINFO\s*\[.*\.)(\w*)(?:\].*)]]></msg-column>
+                <msg-column name="Message" main="1"><![CDATA[(?is)(?:.*<(?:soap-env|soap):body>[^<]*<.*?:)(\w*)]]></msg-column>
+                <msg-column name="Sender"><![CDATA[(?s)(?:.*<.*:sender>)(.+?)(?:<\/.*:sender>.*)]]></msg-column>
+                <msg-column name="Status"><![CDATA[(?s)(?:.*<.*:code>)(.+?)(?:<\/.*:code>.*)]]></msg-column>
+                <msg-column name="OrderId"><![CDATA[(?s)(?:.*<.*:orderId>)(.+?)(?:<\/.*:orderId>.*)]]></msg-column>
+                <msg-column name="ExternalOrderId"><![CDATA[(?s)(?:.*<.*:externalOrderId>)(.+?)(?:<\/.*:externalOrderId>.*)]]></msg-column>
+                <msg-column name="Target"><![CDATA[(?s)(?:.*<.*:target>)(.+?)(?:<\/.*:target>.*)]]></msg-column>
+                <msg-column name="Consumer"><![CDATA[(?s)(?:.*<.*:consumer>)(.+?)(?:<\/.*:consumer>.*)]]></msg-column>
+            </patterns>
+        </nodegroup>
+        <nodegroup name="DB LOG 1" type="database">
+            <node name="Node 1" node-name="xyz123.io.tmo:1234" user="abc" password="psw56" sid="SID567" service-name=""/>
+             <sources>
+                <source name="runable" fields="CREATED, I, ID, PARENT_ID, LEVEL, STATE, ROOT_TAG, PACKAGE, METHOD, STARTED, INXML:xml, OUTXML:xml">
+<![CDATA[WITH dt AS (
+    SELECT id
+    FROM msglog
+    WHERE inxml LIKE '%'||'{search_str}'||'%'
+    AND dt_created >= to_date('{search_date}', 'yyyy-mm-dd HH24:MI')
+)
+SELECT
+    to_char(dt_created, 'yyyy-mm-dd HH24:MI:SS') AS "CREATED",
+    (CASE WHEN id IN (SELECT * FROM dt) THEN ' *' ELSE ' ' END) AS "I",
+    lpad(' ',LEVEL, '.') || id AS "ID", parent_id,
+    LEVEL-1 AS "LEVEL",
+    state,
+    root_tag,
+    package,
+    method,
+    to_char(dt_started, 'yyyy-mm-dd HH24:MI:SS') AS "STARTED",
+    inxml,
+    outxml
+FROM msglog lg
+    START WITH id IN (
+         SELECT id
+                FROM msglog
+                WHERE parent_id IS NULL
+                  START WITH id IN (SELECT * FROM dt)
+                  CONNECT BY PRIOR parent_id = id
+    )
+    CONNECT BY PRIOR id = parent_id
+    ORDER SIBLINGS BY lg.id]]>
+                 </source>
+            </sources>
+            <patterns>
+                <!-- Sorting regex -->
+                <sort active="0"/>
+                <!-- Fields extracting regex -->
+                <msg-column name="Created" main="1"><![CDATA[(?:CREATED\:\')(.*?)(?:\')]]></msg-column>
+                <msg-column name="I"><![CDATA[(?:.*\sI\:\')(.*?)(?:\')]]></msg-column>
+                <msg-column name="Id"><![CDATA[(?:.*\sID\:\')(.*?)(?:\')]]></msg-column>
+                <msg-column name="Parent_id"><![CDATA[(?:.*\sPARENT_REQUEST_ID\:\')(.*?)(?:\')]]></msg-column>
+                <msg-column name="Level"><![CDATA[(?:.*\sLEVEL\:\')(.*?)(?:\')]]></msg-column>
+                <msg-column name="State"><![CDATA[(?:.*\sSTATE\:\')(.*?)(?:\')]]></msg-column>
+                <msg-column name="Root_tag"><![CDATA[(?:.*\sROOT_TAG\:\')(.*?)(?:\')]]></msg-column>
+                <msg-column name="Package" ><![CDATA[(?:.*\sPACKAGE\:\')(.*?)(?:\')]]></msg-column>
+                <msg-column name="Method" ><![CDATA[(?:.*\sMETHOD\:\')(.*?)(?:\')]]></msg-column>
+                <msg-column name="Status"><![CDATA[(?s)(?:.*"status"\s+:\s+{\s+"code"\s+:\s+)(\d+)]]></msg-column>
+                <msg-column name="OrderId"><![CDATA[(?s)(?:.*"orderId"\s+:\s+")(\d+)]]></msg-column>
+                <msg-column name="Started"><![CDATA[(?:.*\sSTARTED\:\')(.*?)(?:\')]]></msg-column>
+            </patterns>
+        </nodegroup>
+    </nodegroups>
+</configuration>

@@ -7,7 +7,7 @@
 # Author:       Sergey Shafranskiy <sergey.shafranskiy@gmail.com>
 #
 # Version:      1.1.4
-# Build:        165
+# Build:        166
 # Created:      2019-01-11
 # ----------------------------------------------------------------------------
 
@@ -28,7 +28,6 @@ MNU_FIND = u"Find"
 MNU_SEARCH_BY_SELECTED = u"Search by Selected"
 MNU_GET_NEXT_PART_BY_LINE_NUMBER = u"Get This and Next 100 Messages"
 MNU_GET_CONTAINING_PART_BY_LINE_NUMBER = u"Get This, Previous 100 and Next 100 Messages"
-MNU_EXTENDER_SEARCH = u"Extended Search"
 MNU_SAVE_TO_FILE = u"Save to File"
 
 # Context menu ids
@@ -37,7 +36,6 @@ ID_FIND = wx.NewIdRef()
 ID_SEARCH_BY_SELECTED = wx.NewIdRef()
 ID_GET_NEXT_PART_BY_LINE_NUMBER = wx.NewIdRef()
 ID_GET_CONTAINIG_PART_BY_LINE_NUMBER = wx.NewIdRef()
-ID_SEARCH_EXTENDED = wx.NewIdRef()
 ID_SAVE_TO_FILE = wx.NewIdRef()
 
 
@@ -48,7 +46,6 @@ class LogXmlSTC(xmlstc.XmlSTC):
     global ID_SEARCH_BY_SELECTED
     global ID_GET_NEXT_PART_BY_LINE_NUMBER
     global ID_GET_CONTAINIG_PART_BY_LINE_NUMBER
-    global ID_SEARCH_EXTENDED
     global ID_SAVE_TO_FILE
 
     def __init__(self, parent, parent_panel):
@@ -101,8 +98,6 @@ class LogXmlSTC(xmlstc.XmlSTC):
 
         self.menu.Append(wx.MenuItem(self.menu, ID_SEARCH_BY_SELECTED,
                                      MNU_SEARCH_BY_SELECTED, wx.EmptyString, wx.ITEM_NORMAL))
-        self.menu.Append(wx.MenuItem(self.menu, ID_SEARCH_EXTENDED,
-                                     MNU_EXTENDER_SEARCH, wx.EmptyString, wx.ITEM_NORMAL))
         self.menu.Append(wx.ID_SEPARATOR)
 
         self.menu.Append(wx.MenuItem(self.menu, ID_SAVE_TO_FILE,
@@ -121,7 +116,6 @@ class LogXmlSTC(xmlstc.XmlSTC):
         self.Bind(wx.EVT_MENU, self.OnMenu, id=ID_GET_NEXT_PART_BY_LINE_NUMBER)
         self.Bind(wx.EVT_MENU, self.OnMenu, id=ID_GET_CONTAINIG_PART_BY_LINE_NUMBER)
         self.Bind(wx.EVT_MENU, self.OnMenu, id=ID_SEARCH_BY_SELECTED)
-        self.Bind(wx.EVT_MENU, self.OnMenu, id=ID_SEARCH_EXTENDED)
 
         self.Bind(wx.EVT_MENU, self.OnMenu, id=ID_SAVE_TO_FILE)
 
@@ -167,7 +161,7 @@ class LogXmlSTC(xmlstc.XmlSTC):
         pattern_xml = r"<\/?.*?:?.+?>"
         p_xml = re.compile(pattern_xml)
 
-        pattern_dt = r"(\s*)(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3})"
+        pattern_dt = r"(^[^:]*:[0-9]*:\s*)(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3})"
         p_dt = re.compile(pattern_dt)
 
         res_lst = []
@@ -256,8 +250,6 @@ class LogXmlSTC(xmlstc.XmlSTC):
             self.get_part_by_line_number(0, 100)
         elif event.Id == ID_GET_CONTAINIG_PART_BY_LINE_NUMBER:
             self.get_part_by_line_number(100, 100)
-        elif event.Id == ID_SEARCH_EXTENDED:
-            self.parent.do_search_extended()
         elif event.Id == ID_SAVE_TO_FILE:
             self.save_to_file()
         else:

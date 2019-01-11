@@ -7,7 +7,7 @@
 # Author:       Sergey Shafranskiy <sergey.shafranskiy@gmail.com>
 #
 # Version:      1.1.4
-# Build:        165
+# Build:        166
 # Created:      2019-01-11
 # ----------------------------------------------------------------------------
 

@@ -7,7 +7,7 @@
 # Author:       Sergey Shafranskiy <sergey.shafranskiy@gmail.com>
 #
 # Version:      1.1.4
-# Build:        165
+# Build:        166
 # Created:      2019-01-11
 # ----------------------------------------------------------------------------
 
@@ -397,23 +397,6 @@ class MainFrame(loganalyzer_gui.LogAnalyzerFrame):
         self.text_lst = self.conn.search(self.selected_nodegroup_index(), source_name, search_str, search_date)
 
         self.text_lst_shown = self.stc_OutLog.set_output(self.text_lst, [self.selected_nodegroup().p_sort])
-        self.lc_OutMsg.set_output(self.text_lst_shown)
-
-    def do_search_extended(self):
-        """
-        Extended search by data set in GUI
-        """
-        source_name = self.cb_Sources.GetStringSelection()
-        self.ch_SearchText_OnTextEnter(None)
-        search_str = self.ch_SearchText.GetValue()
-        search_date = self.selected_date()
-
-        self.rt_Status.Clear()
-        self.rt_Status.Update()
-
-        self.text_lst = self.conn.search_extended(self.selected_nodegroup_index(), source_name, search_str, search_date)
-
-        self.text_lst_shown = self.stc_OutLog.set_output_extended(self.text_lst, [self.selected_nodegroup().p_sort])
         self.lc_OutMsg.set_output(self.text_lst_shown)
 
     def read_state(self, filename: str):

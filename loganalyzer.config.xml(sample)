@@ -8,8 +8,9 @@
             <node name="Node 3" node-name="xyz003.io.tmo:1234" user="user123" password="psw123" remote-dir="/services/logs/jboss-xyz/sy-logs"/>
             <sources>
                 <!-- unix commands -->
-                <source name="server.log*"><![CDATA[find . -maxdepth 1 -type f -name '{{source_name}}' -newermt '{{search_date}}' -exec grep -Hn '{{search_str}}' {} /dev/null \;]]></source>
-                <source name="message.log*"><![CDATA[find . -maxdepth 1 -type f -name '{{source_name}}' -newermt '{{search_date}}' -exec cat {} /dev/null \; | awk 'NF' | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2},[0-9]{3}/\n\n&/' | awk 'BEGIN { RS = "\n\n"; ORS=""} /{{search_str}}/ {print}']]></source>
+                <source name="server.log" source-name="server.log*"><![CDATA[find . -maxdepth 1 -type f -name '{{source_name}}' -newermt '{{search_date}}' -exec grep -Hn '{{search_str}}' {} /dev/null \;]]></source>
+                <source name="server.log (ext.)" source-name="server.log*"><![CDATA[find . -maxdepth 1 -type f -name '{{source_name}}' -newermt '{{search_date}}' -exec grep -Hn '' /dev/null {} \; | sed -E 's/^[^:]*:[0-9]*:[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2},[0-9]{3}/\n\n&/' | awk 'BEGIN { RS = "\n\n"; ORS=""} /{{search_str}}/ {print}']]></source>
+                <source name="message.log" source-name="message.log*"><![CDATA[find . -maxdepth 1 -type f -name '{{source_name}}' -newermt '{{search_date}}' -exec grep -Hn '{{search_str}}' {} /dev/null \;]]></source>
             </sources>
             <patterns>
                 <!-- Sorting regex -->

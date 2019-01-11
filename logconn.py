@@ -7,7 +7,7 @@
 # Author:       Sergey Shafranskiy <sergey.shafranskiy@gmail.com>
 #
 # Version:      1.1.4
-# Build:        166
+# Build:        167
 # Created:      2019-01-11
 # ----------------------------------------------------------------------------
 
@@ -449,26 +449,5 @@ class LogConnection(conn.Connection):
               % (num_from, num_to, file_name)
 
         self.trace_fun(INFO_GET_LOG_PART.format(num_from, num_to, file_name))
-
-        return self.exec_cmd(ng_index, source_name, cmd)
-
-    def search_extended(self, ng_index, source_name, search_str, search_date):
-        """
-        Extended search in sources
-
-        """
-        # command format:
-        # find . -maxdepth 1 -type f -name "server.log*" -newermt "2018-09-18" -exec cat {} /dev/null \;
-        # | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2},[0-9]{3}/\n\n&/'
-        # | awk 'BEGIN { RS = "\n\n"; ORS=""} /TMO951f53ef-b4f4-4d0d-acff-552710a69d26/ {print}'
-        # \n\n -> #$@#$@
-        cmd = (r'''find . -maxdepth 1 -type f -name "%s" ''' +
-               (r'''-newermt "%s" ''' % search_date if search_date else '') +
-               r'''-exec cat {} /dev/null \; | ''' +
-               r'''awk 'NF' |'''
-               r'''sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2},[0-9]{3}/\n\n&/' | ''' +
-               r'''awk 'BEGIN { RS = "\n\n"; ORS=""} /%s/ {print}' ''') % (source_name, search_str)
-
-        self.trace_fun(INFO_SEARCH_EXT.format(search_str, source_name, search_date))
 
         return self.exec_cmd(ng_index, source_name, cmd)

@@ -6,9 +6,9 @@
 #
 # Author:       Sergey Shafranskiy <sergey.shafranskiy@gmail.com>
 #
-# Version:      1.1.3
-# Build:        164
-# Created:      2018-12-16
+# Version:      1.1.4
+# Build:        165
+# Created:      2019-01-11
 # ----------------------------------------------------------------------------
 
 import wx
@@ -216,7 +216,8 @@ class MainFrame(loganalyzer_gui.LogAnalyzerFrame):
         """
 
         self.cb_Sources.Clear()
-        self.cb_Sources.AppendItems(self.selected_nodegroup().get_source_names())
+        src_items = self.selected_nodegroup().get_source_items()
+        [self.cb_Sources.Append(*v) for v in src_items]
 
         if index not in range(self.cb_Sources.GetCount()):
             src_index = 0

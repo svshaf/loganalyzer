@@ -6,14 +6,15 @@
 #
 # Author:       Sergey Shafranskiy <sergey.shafranskiy@gmail.com>
 #
-# Version:      1.1.3
-# Build:        164
-# Created:      2018-12-16
+# Version:      1.1.4
+# Build:        165
+# Created:      2019-01-11
 # ----------------------------------------------------------------------------
 
 from abc import ABC, abstractmethod
 from lxml import etree as et
 from typing import Callable
+from functools import reduce
 
 # In-application tracing messages
 
@@ -109,7 +110,7 @@ class Source():
     Source to which the search is applied
     """
 
-    def __init__(self, name: str, expr: str, fields: OutFields):
+    def __init__(self, name: str, source_name: str, expr: str, fields: OutFields):
         """
         Class constructor
 
@@ -118,6 +119,7 @@ class Source():
         :param fields: Output formatting fields
         """
         self.name = name
+        self.source_name = source_name
         self.expr = expr
         self.fields = fields
 
@@ -256,10 +258,16 @@ class Node(ABC):
         :param source: Source
         :param search_str: Search string
         :param search_date:  Search date in format "YYYY-MM-DD".\
-        If not empty - used  for search in files with modification date >= search_date
+                 - used  for search in files with modification date >= search_date
         :return: Output command
         """
-        cmd = source.expr.format(source_name=source.name, search_str=search_str, search_date=search_date)
+        cmd = source.expr
+        repl_params = (r'{{source_name}}', source.source_name), \
+                      (r'{{search_str}}', search_str), \
+                      (r'{{search_date}}', search_date)
+        for r in repl_params:
+            cmd = cmd.replace(*r)
+
         return cmd
 
     def search(self, source: Source, search_str: str, search_date: str) -> [str]:
@@ -275,7 +283,7 @@ class Node(ABC):
         if self.conn is not None:
             """              
             if self.trace_fun:
-                self.trace_fun(INFO_SEARCH.format(search_str=search_str, source_name=source.name, search_date=search_date))
+                self.trace_fun(INFO_SEARCH.format(search_str=search_str, source_name=source.source_name, search_date=search_date))
             """
             cmd = self.prepare_search_cmd(source, search_str, search_date)
             out_list = self.exec_cmd(source, cmd)
@@ -348,13 +356,13 @@ class NodeGroup:
                 break
         return res
 
-    def get_source_names(self) -> [str]:
+    def get_source_items(self) -> [[str, str]]:
         """
         Get names of all sources
 
         :return: Names of sources
         """
-        return [src.name for src in self.sources]
+        return [[src.name, src.source_name] for src in self.sources]
 
     def get_source(self, source_name: str) -> str:
         """

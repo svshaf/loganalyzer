@@ -6,9 +6,9 @@
 #
 # Author:       Sergey Shafranskiy <sergey.shafranskiy@gmail.com>
 #
-# Version:      1.1.3
-# Build:        164
-# Created:      2018-12-16
+# Version:      1.1.4
+# Build:        165
+# Created:      2019-01-11
 # ----------------------------------------------------------------------------
 
 import re
@@ -122,11 +122,55 @@ class SSHNode(conn.Node):
         remote_dir = self.conn_args['remote_dir']
         return 'cd ' + remote_dir + '\n' + cmd
 
+    def prepare_out_str(self, out, source: conn.Source) -> [str]:
+        """
+        Process command output
+        :param out:
+        :param source:
+        :return:
+        """
+        pattern_xml = r"<\/?.*?:?.+?>"
+        p_xml = re.compile(pattern_xml)
+
+        pattern_pref = r"(^[^:]*:[0-9]*:\s*)(.*)"
+
+        pattern_dt = r"(^[^:]*:[0-9]*:\s*)(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3})"
+        p_dt = re.compile(pattern_dt)
+
+        res_lst = []
+        xml_lst = []
+
+        for line in out:
+            if p_dt.match(line):
+                xml_line = "\n\n"
+                if xml_lst:
+                    xml_str = "".join(xml_lst)
+                    xml_line = indent(xml_str) + xml_line
+
+                res_lst.append(xml_line)
+                xml_lst = []
+            else:
+                line = re.sub(pattern_pref, r'\2', line, 1)
+
+            if p_xml.match(line):
+                line_str = line.strip(' \t\n\r')
+            else:
+                line_str = line
+            xml_lst.append(line_str)
+
+        if xml_lst:
+            xml_str = "".join(xml_lst)
+            xml_line = indent(xml_str)
+            res_lst.append(xml_line)
+
+        return res_lst
+
 
 class SSHNodeGroup(conn.NodeGroup):
     """
     File node group
     """
+
     def __init__(self, trace_fun: conn.TracingFun, name: str, ng_type: str, nodes: conn.Nodes,
                  sources: conn.Sources, patterns: conn.Patterns):
         """
@@ -342,6 +386,7 @@ class LogConnection(conn.Connection):
                 es = self.get_tag(eg, 'sources')
                 for e in es.iterchildren('source'):
                     name = self.get_attr(e, 'name')
+                    source_name = self.get_attr(e, 'source-name')
 
                     expr_fields = []
                     fields = e.get('fields')
@@ -351,7 +396,7 @@ class LogConnection(conn.Connection):
                             is_xml = True if len(fpair) == 2 and fpair[1] == 'xml' else False
                             expr_fields.append(conn.OutField(fpair[0], is_xml))
                     expr = e.text
-                    sources.append(conn.Source(name, expr, expr_fields))
+                    sources.append(conn.Source(name, source_name, expr, expr_fields))
 
                 ep = self.get_tag(eg, 'patterns')
 

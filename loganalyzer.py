@@ -7,8 +7,8 @@
 # Author:       Sergey Shafranskiy <sergey.shafranskiy@gmail.com>
 #
 # Version:      1.1.4
-# Build:        168
-# Created:      2019-01-11
+# Build:        169
+# Created:      2019-01-13
 # ----------------------------------------------------------------------------
 
 import wx
@@ -114,13 +114,18 @@ class MainFrame(loganalyzer_gui.LogAnalyzerFrame):
         """
         'Search' button pressed
         """
+        try:
+            self.SetCursor(wx.StockCursor(wx.CURSOR_WAIT))
+            self.bt_Search.Disable()
+            source_name = self.cb_Sources.GetStringSelection()
+            self.ch_SearchText_OnTextEnter(None)
+            search_str = self.ch_SearchText.GetValue()
+            search_date = self.selected_date()
 
-        source_name = self.cb_Sources.GetStringSelection()
-        self.ch_SearchText_OnTextEnter(None)
-        search_str = self.ch_SearchText.GetValue()
-        search_date = self.selected_date()
-
-        self.do_search(source_name, search_str, search_date)
+            self.do_search(source_name, search_str, search_date)
+        finally:
+            self.bt_Search.Enable()
+            self.SetCursor(wx.StockCursor(wx.CURSOR_ARROW))
 
     def ch_SearchText_OnRightUp(self, event):
         """

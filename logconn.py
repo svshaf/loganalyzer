@@ -7,8 +7,8 @@
 # Author:       Sergey Shafranskiy <sergey.shafranskiy@gmail.com>
 #
 # Version:      1.1.4
-# Build:        167
-# Created:      2019-01-11
+# Build:        169
+# Created:      2019-01-13
 # ----------------------------------------------------------------------------
 
 import re

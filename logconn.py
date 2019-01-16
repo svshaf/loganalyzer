@@ -6,9 +6,9 @@
 #
 # Author:       Sergey Shafranskiy <sergey.shafranskiy@gmail.com>
 #
-# Version:      1.1.4
-# Build:        169
-# Created:      2019-01-13
+# Version:      1.1.5
+# Build:        170
+# Created:      2019-01-16
 # ----------------------------------------------------------------------------
 
 import re
@@ -122,48 +122,64 @@ class SSHNode(conn.Node):
         remote_dir = self.conn_args['remote_dir']
         return 'cd ' + remote_dir + '\n' + cmd
 
-    def prepare_out_str(self, out, source: conn.Source) -> [str]:
+    def prepare_out_str(self, out, source: conn.Source) -> [[str], bool]:
         """
         Process command output
         :param out:
         :param source:
         :return:
         """
-        pattern_xml = r"<\/?.*?:?.+?>"
-        p_xml = re.compile(pattern_xml)
-
-        pattern_pref = r"(^[^:]*:[0-9]*:\s*)(.*)"
-
+        # date-time header, for example: 2019-01-09 09:56:18,893
         pattern_dt = r"(^[^:]*:[0-9]*:\s*)(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3})"
         p_dt = re.compile(pattern_dt)
 
+        # xml tag
+        pattern_xml = r".*<\/?.*?:?.+?>"
+        p_xml = re.compile(pattern_xml)
+
+        pattern_xml_soap_beg = r"(?is).*<(soap-env|soap).*>"
+        p_xml_soap_beg = re.compile(pattern_xml_soap_beg)
+
+        pattern_xml_soap_end = r"(?is).*</(soap-env|soap).*>"
+        p_xml_soap_end = re.compile(pattern_xml_soap_end)
+
+        # filename, line number header, for example: ./server.log.2019-01-09:21697:
+        pattern_pref = r"(^[^:]*:[0-9]*:\s*)(.*)"
+
         res_lst = []
         xml_lst = []
+        can_sort = True
 
         for line in out:
-            if p_dt.match(line):
-                xml_line = "\n\n"
+            if p_dt.match(line):  # line starting with date-time header?
+                # output of previous line block (xml_lst)
                 if xml_lst:
-                    xml_str = "".join(xml_lst)
-                    xml_line = indent(xml_str) + xml_line
+                    res_lst.append(indent("".join(xml_lst)) + "\n")
+                    xml_lst = []
 
-                res_lst.append(xml_line)
-                xml_lst = []
+                xml_lst.append(line)
             else:
-                line = re.sub(pattern_pref, r'\2', line, 1)
+                if xml_lst:
+                    line = re.sub(pattern_pref, r'\2', line, 1)
+                    if p_xml.match(line):
+                        line = line.strip(' \t\n\r')
+                    if line:
+                        xml_lst.append(line)
 
-            if p_xml.match(line):
-                line_str = line.strip(' \t\n\r')
-            else:
-                line_str = line
-            xml_lst.append(line_str)
+                    """
+                    if p_xml_soap_end.match(line):
+                        res_lst.append(indent("".join(xml_lst)) + "\n")
+                        xml_lst = []
+                    """
+                else:
+                    if line.strip(' \t\n\r'):
+                        res_lst.append(line)
+                        can_sort = False
 
         if xml_lst:
-            xml_str = "".join(xml_lst)
-            xml_line = indent(xml_str)
-            res_lst.append(xml_line)
+            res_lst.append(indent("".join(xml_lst)))
 
-        return res_lst
+        return res_lst, can_sort
 
 
 class SSHNodeGroup(conn.NodeGroup):
@@ -270,7 +286,7 @@ class SQLNode(conn.Node):
     def create_conn(self):
         return SQLNodeConn()
 
-    def prepare_out_str(self, out, source: conn.Source) -> [str]:
+    def prepare_out_str(self, out, source: conn.Source) -> [[str], bool]:
         res_list = []
         if out:
             for row in out:
@@ -282,7 +298,7 @@ class SQLNode(conn.Node):
                     else:
                         row_str += "\n" + field.name + ":\n" + indent(str(col)) + "\n"
                 res_list.append(row_str + "\n--------------------------------------\n")
-        return res_list
+        return res_list, True
 
 
 class LogConnection(conn.Connection):

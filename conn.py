@@ -6,14 +6,14 @@
 #
 # Author:       Sergey Shafranskiy <sergey.shafranskiy@gmail.com>
 #
-# Version:      1.1.4
-# Build:        169
-# Created:      2019-01-13
+# Version:      1.1.5
+# Build:        170
+# Created:      2019-01-16
 # ----------------------------------------------------------------------------
 
 from abc import ABC, abstractmethod
 from lxml import etree as et
-from typing import Callable
+from typing import Callable, Optional
 from functools import reduce
 
 # In-application tracing messages
@@ -21,15 +21,15 @@ from functools import reduce
 CONF_READ_ERR = "Configuration loading error, file: '{}'"
 
 CONN_START = "Connecting to '{}'"
-CONN_OK = " OK"
-CONN_FAILED = " FAILED"
-CONN_CLOSED = "Connection to '{}' was closed"
+CONN_OK = " - OK"
+CONN_FAILED = " - FAILED"
+CONN_CLOSED = "Connection to '{}' was closed\n\n"
 
 INFO_SEARCH = "Search for '{0}' in '{1}' with date >= '{2}'"
 INFO_EXEC_CMD = "Execute command '{}'"
 INFO_OPERATION_COMPLETED = 'Operation completed, {} line(s) found'
 
-TracingFun = Callable[[str], None]
+TracingFun = Callable
 
 
 class SortPattern():
@@ -74,6 +74,7 @@ class Patterns():
     """
     Patterns (sorting, [columns])
     """
+
     def __init__(self, sort: SortPattern, msg_columns: ColumnPatterns):
         """
         Class constructor
@@ -219,7 +220,7 @@ class Node(ABC):
         """
         return cmd
 
-    def prepare_out_str(self, out, source: Source) -> [str]:
+    def prepare_out_str(self, out, source: Source) -> [[str], bool]:
         """
         Prepare output string (search result)
 
@@ -227,29 +228,7 @@ class Node(ABC):
         :param out: Output structure
         :return: Output list of strings
         """
-        return out
-
-    def exec_cmd(self, source, cmd: str) -> [str]:
-        """
-        Execute command on node
-
-        :param source: Source
-        :param cmd: Command
-        :return: Stdout, list
-        """
-        res_lst = []
-        if self.conn is not None:
-            if self.trace_fun:
-                self.trace_fun(INFO_EXEC_CMD.format(cmd))
-            try:
-                cmd_prepared = self.prepare_in_cmd(source, cmd)
-                out = self.conn.exec_cmd(cmd_prepared)
-                out_list = self.prepare_out_str(out, source)
-                res_lst.extend(out_list)
-            except Exception as ex:
-                res_lst.clear()
-
-        return res_lst
+        return out, True
 
     def prepare_search_cmd(self, source: Source, search_str: str, search_date: str) -> str:
         """
@@ -270,7 +249,30 @@ class Node(ABC):
 
         return cmd
 
-    def search(self, source: Source, search_str: str, search_date: str) -> [str]:
+    def exec_cmd(self, source: Source, cmd: str) -> [[str], bool]:
+        """
+        Execute command on node
+
+        :param source: Source
+        :param cmd: Command
+        :return: Stdout, list
+        """
+        res_lst = []
+        can_sort = False
+        if self.conn is not None:
+            if self.trace_fun:
+                self.trace_fun(INFO_EXEC_CMD.format(cmd))
+            try:
+                cmd_prepared = self.prepare_in_cmd(source, cmd)
+                out = self.conn.exec_cmd(cmd_prepared)
+                out_list, can_sort = self.prepare_out_str(out, source)
+                res_lst.extend([self.name + ':' + line for line in out_list])
+            except Exception as ex:
+                res_lst.clear()
+
+        return res_lst, can_sort
+
+    def search(self, source: Source, search_str: str, search_date: str) -> [[str], bool]:
         """
         Do search for _search_str_ in file(s) with file name mask _search_file_ with date >= _search_date_
 
@@ -286,10 +288,10 @@ class Node(ABC):
                 self.trace_fun(INFO_SEARCH.format(search_str=search_str, source_name=source.source_name, search_date=search_date))
             """
             cmd = self.prepare_search_cmd(source, search_str, search_date)
-            out_list = self.exec_cmd(source, cmd)
+            out_list, can_sort = self.exec_cmd(source, cmd)
             res_lst.extend(out_list)
 
-        return res_lst
+        return res_lst, can_sort
 
     def close(self):
         """
@@ -395,12 +397,19 @@ class NodeGroup:
 
         res_lst = []
         n_active_nodes = 1
+        can_sort_all = True
         for node in self.nodes:
             is_connected = node.connect()
             if is_connected:
                 n_active_nodes += 1
-                res_lst.extend(node.exec_cmd(source, cmd))
+                lst, can_sort = node.exec_cmd(node.name, source, cmd)
+                can_sort_all &= can_sort
+                res_lst.extend(lst)
                 node.close()
+
+        if self.is_sort_active and (n_active_nodes > 0) and can_sort_all:
+            res_lst = sorted(res_lst, key=self.sort_fun)
+
         if self.trace_fun:
             self.trace_fun(INFO_OPERATION_COMPLETED.format(len(res_lst)))
         return res_lst
@@ -421,14 +430,17 @@ class NodeGroup:
 
         res_lst = []
         n_active_nodes = 1
+        can_sort_all = True
         for node in self.nodes:
             is_connected = node.connect()
             if is_connected:
                 n_active_nodes += 1
-                res_lst.extend(node.search(source, search_str, search_date))
+                lst, can_sort = node.search(source, search_str, search_date)
+                can_sort_all &= can_sort
+                res_lst.extend(lst)
                 node.close()
 
-        if self.is_sort_active and (n_active_nodes > 0):
+        if self.is_sort_active and (n_active_nodes > 0) and can_sort_all:
             res_lst = sorted(res_lst, key=self.sort_fun)
 
         if self.trace_fun:

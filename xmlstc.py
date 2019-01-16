@@ -6,9 +6,9 @@
 #
 # Author:       Sergey Shafranskiy <sergey.shafranskiy@gmail.com>
 #
-# Version:      1.1.4
-# Build:        169
-# Created:      2019-01-13
+# Version:      1.1.5
+# Build:        170
+# Created:      2019-01-16
 # ----------------------------------------------------------------------------
 
 import wx
